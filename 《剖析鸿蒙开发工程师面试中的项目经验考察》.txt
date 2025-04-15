@@ -1,5 +1,89 @@
-在鸿蒙开发工程师面试环节里，项目经验考察占据着举足轻重的地位。面试官借助对项目经验的深入询问，得以全面且深入地了解求职者的实际开发水平与问题解决能力，这往往是评判求职者是否能胜任岗位的关键要素。​
-当阐述项目经历时，严格遵循项目背景、目标、实施过程与成果的逻辑顺序进行介绍，能让面试官清晰地把握项目全貌。以一个鸿蒙社交应用开发项目为例，项目背景或许是察觉到当下社交应用在多设备协同体验上存在不足，特定用户群体，比如经常在手机、平板、智能手表等多设备间切换使用社交功能的商务人士，急需一款能够实现多设备便捷社交的应用。基于此，项目目标明确设定为打造一款无缝衔接多设备的社交应用，让用户在不同设备上都能流畅、高效地进行社交互动。​
-在实施过程中，详细描述自己负责的关键模块极为重要。假设负责消息发送与接收模块开发，这一模块涉及诸多复杂技术要点。采用鸿蒙分布式通信框架实现设备间消息同步，便是核心技术方案之一。该框架利用分布式软总线技术，构建起稳定的数据传输通道。在具体实现中，为确保消息准确、及时送达，需要精心设计消息队列机制，对消息进行优先级排序，优先发送紧急且重要的消息，避免因网络拥堵导致关键消息延迟。同时，优化网络请求以提升稳定性，通过引入网络状态监测功能，实时感知网络变化。一旦检测到网络波动，立即调整网络请求策略，如降低请求频率、增加请求重试次数，保障消息传输的稳定性。​
-强调项目成果是展现项目价值的关键。经过团队努力，该应用上线后取得了显著成效。用户活跃度达到了令人瞩目的 [X]%，这一数据直观反映出应用受到用户的欢迎程度。并且，从用户反馈来看，大量用户表示在多设备间切换使用社交功能时，体验流畅，几乎感受不到设备差异，充分证明了项目在满足用户多设备便捷社交需求方面的成功。​
-面对面试官关于项目挑战与解决方案的追问，要条理清晰地作答。例如在项目中遇到不同鸿蒙设备兼容性问题，这是鸿蒙应用开发中常见且棘手的难题。不同设备的硬件参数、屏幕尺寸、系统版本存在差异，导致应用在部分设备上出现界面显示异常、功能无法正常使用等情况。针对此问题，采取的解决措施是搭建一套全面的设备检测体系，在应用启动时，迅速检测设备特性，包括设备型号、屏幕分辨率、系统版本等信息。依据检测结果，针对性优化代码。对于屏幕尺寸不同的设备，运用自适应布局算法，动态调整界面元素的大小与位置，确保界面美观且操作便捷。针对系统版本差异，通过条件编译技术，针对不同系统版本调用相应的 API，保证功能正常运行。通过展示在项目中积极探索、解决问题的全过程，充分体现自身的技术能力与高度责任心。如此全面、深入地阐述项目经验，能让面试官充分认识到自身价值与能力，极大增加面试成功几率 。
+在参与鸿蒙应用开发项目时，UI 设计与用户交互是我重点关注的部分。其中一个项目是为一家本地咖啡馆打造专属的点单应用。​
+在 UI 设计阶段，我充分利用鸿蒙提供的丰富布局容器，如 DirectionalLayout 和 GridLayout。以 GridLayout 为例，在设计菜单展示页面时，通过如下代码实现各类饮品和小吃信息的整齐排列：​
+​
+<GridLayout​
+    xmlns:ohos="http://schemas.huawei.com/res/ohos"​
+    ohos:height="match_parent"​
+    ohos:width="match_parent"​
+    ohos:column_count="3"​
+    ohos:row_count="4"​
+    ohos:orientation="horizontal"​
+    ohos:alignment="center">​
+    <Image​
+        ohos:id="$+id:drink1_img"​
+        ohos:height="120vp"​
+        ohos:width="120vp"​
+        ohos:image_src="$media:drink1"​
+        ohos:layout_alignment="center"/>​
+    <Text​
+        ohos:id="$+id:drink1_name"​
+        ohos:height="match_content"​
+        ohos:width="match_content"​
+        ohos:text="拿铁"​
+        ohos:text_size="18fp"​
+        ohos:layout_alignment="center"/>​
+    <!-- 更多饮品和小吃的图片与文本组件类似添加 -->​
+</GridLayout>​
+​
+同时，遵循鸿蒙的设计语言，在resource/base/color/color.xml文件中配置色彩，如：​
+​
+<resources>​
+    <color name="coffee_bg_color">#FFF5E1</color>​
+    <color name="text_color">#333333</color>​
+</resources>​
+​
+并在布局文件中应用这些色彩，营造轻松、舒适视觉效果：​
+​
+<DirectionalLayout​
+    xmlns:ohos="http://schemas.huawei.com/res/ohos"​
+    ohos:height="match_parent"​
+    ohos:width="match_parent"​
+    ohos:orientation="vertical"​
+    ohos:background_element="$color:coffee_bg_color">​
+    <!-- 布局内其他组件 -->​
+</DirectionalLayout>​
+​
+用户交互方面，为了提升点单的便捷性，运用鸿蒙的触摸事件处理机制。当用户点击饮品图片时，通过如下代码弹出对话框展示饮品详情并提供添加到购物车选项：​
+​
+Image drinkImage = (Image) findComponentById(ResourceTable.Id_drink1_img);​
+drinkImage.setClickedListener(new Component.ClickedListener() {​
+    @Override​
+    public void onClick(Component component) {​
+        Dialog dialog = new Dialog(getContext());​
+        Component dialogComponent = LayoutScatter.getInstance(getContext()).parse(ResourceTable.Layout_drink_detail_dialog, null, false);​
+        Text drinkDesc = (Text) dialogComponent.findComponentById(ResourceTable.Id_drink_desc);​
+        drinkDesc.setText("拿铁，由浓缩咖啡与牛奶混合而成...");​
+        Button addToCartBtn = (Button) dialogComponent.findComponentById(ResourceTable.Id_add_to_cart);​
+        addToCartBtn.setClickedListener(new Component.ClickedListener() {​
+            @Override​
+            public void onClick(Component component) {​
+                // 执行添加到购物车逻辑，如发送网络请求到服务器​
+                ToastDialog toast = new ToastDialog(getContext());​
+                toast.setText("已添加到购物车").show();​
+            }​
+        });​
+        dialog.setContentCustomComponent(dialogComponent);​
+        dialog.show();​
+    }​
+});​
+​
+在这个过程中，遇到了不同设备触摸响应灵敏度不一致的问题。经过排查，发现是部分设备的驱动程序对触摸事件的处理存在细微差异。解决办法是在代码中针对不同设备型号，微调触摸事件的触发阈值，通过DeviceInfo类获取设备型号并进行判断：​
+​
+String deviceModel = DeviceInfo.getDeviceModel();​
+if ("device_model_1".equals(deviceModel)) {​
+    // 降低触摸触发阈值​
+    drinkImage.setTouchEventListener(new Component.TouchEventListener() {​
+        @Override​
+        public boolean onTouch(Component component, TouchEvent touchEvent) {​
+            if (touchEvent.getAction() == TouchEvent.PRIMARY_POINT_DOWN) {​
+                // 调整后的触发逻辑​
+                return true;​
+            }​
+            return false;​
+        }​
+    });​
+} else if ("device_model_2".equals(deviceModel)) {​
+    // 提高触摸触发阈值，相应调整触发逻辑​
+}​
+​
+这次项目让我深刻体会到，在鸿蒙应用开发中，注重 UI 设计与用户交互细节，充分利用系统特性并灵活应对设备差异，是打造优质应用的关键。
