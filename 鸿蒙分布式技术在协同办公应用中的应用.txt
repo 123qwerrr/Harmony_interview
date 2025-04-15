@@ -1,0 +1,75 @@
+参与开发的一款协同办公应用，充分利用了鸿蒙的分布式技术。该应用旨在实现团队成员在不同设备间实时共享文档、协同编辑。​
+在实现分布式文档共享功能时，运用鸿蒙的分布式软总线和分布式数据管理能力。首先，通过分布式软总线建立设备间的连接，以下是简单的连接建立代码示例（简化示意，实际需更多权限与配置）：​
+​
+DeviceManager deviceManager = DeviceManager.getInstance();​
+List<DeviceInfo> deviceList = deviceManager.getDeviceList(DeviceInfo.FLAG_GET_ONLINE_DEVICE);​
+if (deviceList != null) {​
+    for (DeviceInfo deviceInfo : deviceList) {​
+        // 尝试连接设备，实际需处理连接结果回调等​
+        boolean isConnected = deviceManager.connectDevice(deviceInfo.getDeviceId());​
+    }​
+}​
+​
+将文档数据存储在分布式数据库中，假设使用DistributedRdbStore：​
+​
+DistributedRdbManager distributedRdbManager = DistributedRdbManager.getInstance(getContext());​
+DistributedRdbStore distributedRdbStore = distributedRdbManager.getRdbStore("document_db");​
+// 存储文档数据，假设文档数据封装在Document类中​
+Document document = new Document("文档内容", "作者", "创建时间");​
+ValuesBucket valuesBucket = new ValuesBucket();​
+valuesBucket.putString("content", document.getContent());​
+valuesBucket.putString("author", document.getAuthor());​
+valuesBucket.putString("create_time", document.getCreateTime());​
+distributedRdbStore.insert("documents", valuesBucket);​
+​
+在协同编辑功能实现过程中，遇到了数据冲突问题。比如，成员 A 和成员 B 同时对文档的同一部分进行修改，导致数据不一致。为解决此问题，引入了版本控制机制。每次编辑操作都会生成一个版本号，在数据库表中添加版本号字段version。插入或更新数据时，同时更新版本号：​
+​
+// 插入数据时​
+ValuesBucket valuesBucket = new ValuesBucket();​
+valuesBucket.putString("content", newContent);​
+valuesBucket.putString("author", author);​
+valuesBucket.putString("create_time", createTime);​
+valuesBucket.putInt("version", 1);​
+distributedRdbStore.insert("documents", valuesBucket);​
+​
+// 更新数据时​
+RdbPredicates predicates = new RdbPredicates("documents");​
+predicates.equalTo("id", documentId);​
+int currentVersion = getCurrentVersion(distributedRdbStore, documentId);​
+ValuesBucket updateValues = new ValuesBucket();​
+updateValues.putString("content", updatedContent);​
+updateValues.putInt("version", currentVersion + 1);​
+int rowsAffected = distributedRdbStore.update(predicates, updateValues);​
+if (rowsAffected == 0) {​
+    // 说明版本冲突，处理冲突逻辑，如提示用户手动解决​
+}​
+​
+同时，优化了数据同步策略，采用增量同步方式，只同步有变化的数据部分，通过计算文档内容的哈希值来判断数据是否变化：​
+​
+// 计算哈希值方法​
+private String calculateHash(String content) {​
+    try {​
+        MessageDigest digest = MessageDigest.getInstance("SHA - 256");​
+        byte[] hashBytes = digest.digest(content.getBytes(StandardCharsets.UTF_8));​
+        StringBuilder hexString = new StringBuilder();​
+        for (byte b : hashBytes) {​
+            String hex = Integer.toHexString(0xff & b);​
+            if (hex.length() == 1) {​
+                hexString.append('0');​
+            }​
+            hexString.append(hex);​
+        }​
+        return hexString.toString();​
+    } catch (NoSuchAlgorithmException e) {​
+        e.printStackTrace();​
+        return "";​
+    }​
+}​
+// 同步数据时对比哈希值​
+String localHash = calculateHash(localDocument.getContent());​
+String remoteHash = getRemoteHash(distributedRdbStore, documentId);​
+if (!localHash.equals(remoteHash)) {​
+    // 数据有变化，进行同步​
+}​
+​
+这次项目让我对鸿蒙分布式技术有了深入理解，其强大的设备协同能力为开发创新性的办公应用提供了广阔空间，但在实际应用中需要精心处理好数据一致性和同步效率等关键问题。

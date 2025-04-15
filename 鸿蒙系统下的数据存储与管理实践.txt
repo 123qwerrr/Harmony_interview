@@ -1,0 +1,90 @@
+在一个个人记账应用的鸿蒙开发项目中，数据存储与管理是核心功能。​
+项目采用鸿蒙的 SQLite 数据库来存储用户的账目信息，包括收入、支出的金额、类别、时间等。通过 SQLiteOpenHelper 类来创建和管理数据库，如下代码展示了数据库帮助类的实现：​
+​
+import ohos.data.rdb.*;​
+import ohos.data.rdb.RdbStore;​
+import java.util.ArrayList;​
+import java.util.List;​
+​
+public class MyDatabaseHelper extends RdbOpenHelper {​
+    private static final String DB_NAME = "account.db";​
+    private static final int DB_VERSION = 1;​
+    public MyDatabaseHelper(Context context) {​
+        super(context, DB_NAME, null, DB_VERSION);​
+    }​
+    @Override​
+    public void onCreate(RdbStore rdbStore) {​
+        String createTableSql = "CREATE TABLE accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, amount REAL, type TEXT, time TEXT)";​
+        rdbStore.executeSql(createTableSql);​
+    }​
+    @Override​
+    public void onUpgrade(RdbStore rdbStore, int oldVersion, int newVersion) {​
+        // 升级逻辑，如修改表结构​
+        String dropTableSql = "DROP TABLE IF EXISTS accounts";​
+        rdbStore.executeSql(dropTableSql);​
+        onCreate(rdbStore);​
+    }​
+}​
+​
+在数据插入过程中，起初遇到了数据插入速度慢的问题，尤其是在用户批量添加账目时。经分析，是因为每次插入操作都单独开启和关闭数据库连接。解决方法是采用数据库连接池技术，这里以简单的单例模式实现一个数据库连接池示例：​
+​
+public class DatabaseConnectionPool {​
+    private static DatabaseConnectionPool instance;​
+    private RdbStore rdbStore;​
+    private MyDatabaseHelper myDatabaseHelper;​
+    private DatabaseConnectionPool(Context context) {​
+        myDatabaseHelper = new MyDatabaseHelper(context);​
+        rdbStore = myDatabaseHelper.getRdbStore();​
+    }​
+    public static DatabaseConnectionPool getInstance(Context context) {​
+        if (instance == null) {​
+            instance = new DatabaseConnectionPool(context);​
+        }​
+        return instance;​
+    }​
+    public RdbStore getRdbStore() {​
+        return rdbStore;​
+    }​
+}​
+​
+使用连接池进行数据插入：​
+​
+DatabaseConnectionPool connectionPool = DatabaseConnectionPool.getInstance(getContext());​
+RdbStore rdbStore = connectionPool.getRdbStore();​
+List<Account> accountsToInsert = getAccountsToInsert();// 假设该方法获取要插入的账目列表​
+for (Account account : accountsToInsert) {​
+    ValuesBucket valuesBucket = new ValuesBucket();​
+    valuesBucket.putDouble("amount", account.getAmount());​
+    valuesBucket.putString("type", account.getType());​
+    valuesBucket.putString("time", account.getTime());​
+    rdbStore.insert("accounts", valuesBucket);​
+}​
+​
+在数据查询方面，为了实现快速根据时间范围查询账目，对时间字段建立了索引。在onCreate方法中添加索引创建语句：​
+​
+@Override​
+public void onCreate(RdbStore rdbStore) {​
+    String createTableSql = "CREATE TABLE accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, amount REAL, type TEXT, time TEXT)";​
+    rdbStore.executeSql(createTableSql);​
+    String createIndexSql = "CREATE INDEX idx_time ON accounts (time)";​
+    rdbStore.executeSql(createIndexSql);​
+}​
+​
+优化后的查询语句示例：​
+​
+String startTime = "2023 - 01 - 01";​
+String endTime = "2023 - 12 - 31";​
+RdbPredicates predicates = new RdbPredicates("accounts");​
+predicates.between("time", startTime, endTime);​
+ResultSet resultSet = rdbStore.query(predicates, null);​
+List<Account> queriedAccounts = new ArrayList<>();​
+while (resultSet.next()) {​
+    double amount = resultSet.getDouble(resultSet.getColumnIndexForName("amount"));​
+    String type = resultSet.getString(resultSet.getColumnIndexForName("type"));​
+    String time = resultSet.getString(resultSet.getColumnIndexForName("time"));​
+    Account account = new Account(amount, type, time);​
+    queriedAccounts.add(account);​
+}​
+resultSet.close();​
+​
+通过这个项目，我掌握了在鸿蒙系统中高效进行数据存储与管理的技巧，深刻认识到合理的数据库设计和优化操作对于应用性能的重要性。

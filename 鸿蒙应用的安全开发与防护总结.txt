@@ -1,0 +1,93 @@
+在开发一款涉及用户敏感信息的金融类鸿蒙应用时，安全开发是重中之重。​
+数据加密方面，采用 AES 对称加密算法对用户的账户信息、交易记录等敏感数据进行存储加密。利用鸿蒙的安全库实现 AES 加密，示例代码如下：​
+​
+import ohos.security.cipher.Cipher;​
+import ohos.security.cipher.CipherHelper;​
+import ohos.security.cipher.Key;​
+import ohos.security.cipher.KeyGenParameterSpec;​
+import ohos.security.cipher.SecretKey;​
+import ohos.security.cipher.SecretKeyFactory;​
+import ohos.security.keystore.KeyStore;​
+import ohos.security.keystore.KeyStoreException;​
+​
+// 生成加密密钥​
+SecretKey secretKey = null;​
+try {​
+    KeyGenParameterSpec spec = new KeyGenParameterSpec.Builder("myKeyAlias",​
+            KeyGenParameterSpec.PURPOSE_ENCRYPT | KeyGenParameterSpec.PURPOSE_DECRYPT)​
+           .setBlockModes(CipherHelper.BLOCK_MODE_CBC)​
+           .setEncryptionPaddings(CipherHelper.ENCRYPTION_PADDING_PKCS7)​
+           .build();​
+    SecretKeyFactory keyFactory = SecretKeyFactory.getInstance(CipherHelper.ALGORITHM_AES);​
+    secretKey = keyFactory.generateSecret(spec);​
+} catch (Exception e) {​
+    e.printStackTrace();​
+}​
+​
+// 加密用户密码​
+String password = "userPassword123";​
+byte[] encryptedPassword = null;​
+try {​
+    Cipher cipher = Cipher.getInstance(CipherHelper.ALGORITHM_AES + "/" + CipherHelper.BLOCK_MODE_CBC + "/" + CipherHelper.ENCRYPTION_PADDING_PKCS7);​
+    cipher.init(Cipher.MODE_ENCRYPT_MODE, secretKey);​
+    encryptedPassword = cipher.doFinal(password.getBytes());​
+} catch (Exception e) {​
+    e.printStackTrace();​
+}​
+​
+网络通信采用 HTTPS 协议保证数据传输安全，设置 SSL 证书验证确保通信双方身份真实性。在网络请求代码中配置 SSL 证书验证，示例如下：​
+​
+import ohos.net.ssl.HttpsURLConnection;​
+import ohos.net.ssl.SSLContext;​
+import ohos.net.ssl.SSLSocketFactory;​
+import ohos.net.ssl.TrustManager;​
+import ohos.net.ssl.TrustManagerFactory;​
+import ohos.net.ssl.X509TrustManager;​
+import java.io.InputStream;​
+import java.net.URL;​
+import java.security.KeyStore;​
+import java.security.SecureRandom;​
+​
+// 加载证书​
+KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());​
+InputStream inputStream = getClass().getResourceAsStream("mycert.crt");​
+keyStore.load(inputStream, null);​
+​
+// 创建TrustManager​
+TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());​
+trustManagerFactory.init(keyStore);​
+TrustManager[] trustManagers = trustManagerFactory.getTrustManagers();​
+X509TrustManager trustManager = (X509TrustManager) trustManagers[0];​
+​
+// 创建SSLContext​
+SSLContext sslContext = SSLContext.getInstance("TLSv1.2");​
+sslContext.init(null, new TrustManager[]{trustManager}, new SecureRandom());​
+SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();​
+​
+// 发起HTTPS请求​
+URL url = new URL("https://secure.financialapp.com/api/transaction");​
+HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();​
+connection.setSSLSocketFactory(sslSocketFactory);​
+// 设置请求方法、参数等​
+connection.connect();​
+​
+应用权限管理严格遵循最小权限原则，只在必要时获取用户的位置、通讯录等权限，并向用户明确说明权限用途。在config.json文件中声明权限：​
+​
+{​
+    "module": {​
+        "reqPermissions": [​
+            {​
+                "name": "ohos.permission.LOCATION",​
+                "reason": "需要获取位置信息以提供附近金融网点服务",​
+                "usedScene": {​
+                    "ability": [​
+                        "com.example.financialapp.LocationBasedServiceAbility"​
+                    ],​
+                    "when": "inUse"​
+                }​
+            }​
+        ]​
+    }​
+}​
+​
+通过定期使用代码扫描工具对应用代码进行安全扫描，及时发现并修复潜在的安全漏洞，如 SQL 注入、跨站脚本攻击等风险点。这个项目让我深刻认识到在鸿蒙应用开发中，安全开发是保障用户权益和应用声誉的基础，需要从数据存储、网络通信、权限管理等多方面构建全面的安全防护体系。

@@ -1,0 +1,15 @@
+在一个智能家居控制应用的鸿蒙开发项目中，实现了鸿蒙系统与多种物联网设备的融合。​
+项目涉及到智能灯光、智能窗帘、智能家电等设备的控制。通过鸿蒙的设备管理接口，扫描并连接附近的物联网设备。以智能灯光设备为例，利用设备的蓝牙或 Wi-Fi 通信协议，与鸿蒙应用建立连接，发送控制指令。以下是蓝牙连接与发送指令的代码示例（简化示意，实际需更多权限与蓝牙适配）：​
+​
+BluetoothManager bluetoothManager = BluetoothManager.getInstance();​
+BluetoothAdapter bluetoothAdapter = bluetoothManager.getAdapter();​
+if (bluetoothAdapter.isEnabled()) {​
+    UUID uuid = UUID.fromString("00001101 - 0000 - 1000 - 8000 - 00805F9B34FB");// 假设灯光设备的UUID​
+    try {​
+        BluetoothSocket bluetoothSocket = bluetoothAdapter.getRemoteSocket(uuid);​
+        OutputStream outputStream = bluetoothSocket.openOutputStream();​
+        // 发送控制指令，如开灯指令​
+        outputStream.write(new byte[]{0x01});​
+        outputStream.close();​
+        bluetoothSocket.close​
+​

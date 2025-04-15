@@ -1,0 +1,49 @@
+为了让一款旅游指南类鸿蒙应用能够服务全球用户，实现多语言支持是项目的重要任务。​
+采用资源文件方式管理多语言内容，在resources目录下创建不同语言的资源文件夹，如zh（中文）、en（英文）、fr（法文）等。在每个语言文件夹的strings.json文件中定义对应语言的文本内容，例如英文strings.json：​
+​
+{​
+    "app_title": "Travel Guide",​
+    "destination_description": "Explore amazing destinations around the world."​
+}​
+​
+中文strings.json：​
+​
+{​
+    "app_title": "旅游指南",​
+    "destination_description": "探索世界各地令人惊叹的目的地。"​
+}​
+​
+在应用代码中，通过获取系统语言设置加载对应的语言资源文件。使用ResourceManager类实现，示例代码如下：​
+​
+import ohos.resources.ResourceManager;​
+import ohos.resources.ResourceManagerFactory;​
+import ohos.global.resource.NotExistException;​
+import java.util.Locale;​
+​
+// 获取系统语言​
+Locale locale = Locale.getDefault();​
+String languageCode = locale.getLanguage();​
+​
+// 加载对应语言资源​
+ResourceManager resourceManager = ResourceManagerFactory.getInstance().getResourceManager(getContext().getBundleName());​
+try {​
+    if ("zh".equals(languageCode)) {​
+        resourceManager.addResource("zh", "base", "");​
+    } else if ("en".equals(languageCode)) {​
+        resourceManager.addResource("en", "base", "");​
+    } else if ("fr".equals(languageCode)) {​
+        resourceManager.addResource("fr", "base", "");​
+    }​
+    String appTitle = resourceManager.getElement("app_title").getString();​
+    // 在UI中设置appTitle​
+} catch (NotExistException e) {​
+    e.printStackTrace();​
+}​
+​
+在实现过程中，遇到部分特殊字符在不同语言编码下显示异常的问题。通过统一字符编码为 UTF - 8，并对特殊字符进行转义处理解决。例如，在资源文件中对特殊字符进行转义：​
+​
+{​
+    "special_text": "这是包含特殊字符的文本：&amp;、&lt;、&gt;"​
+}​
+​
+在读取资源文件后，在显示时进行还原处理。这个项目让我掌握了在鸿蒙应用中实现多语言支持的方法，理解了多语言支持对于扩大应用市场、提升用户体验的重要意义。

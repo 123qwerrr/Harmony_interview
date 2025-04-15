@@ -1,0 +1,105 @@
+在将一款原本基于安卓开发的移动应用移植到鸿蒙平台的项目中，我深入体验了鸿蒙跨平台开发的复杂性与独特性。​
+项目伊始，首要难题便是 UI 布局的适配。安卓和鸿蒙的布局体系虽有相通之处，但细节差异显著。以 LinearLayout 在安卓和鸿蒙中的对应布局为例，安卓的 LinearLayout 在鸿蒙中对应的是 DirectionalLayout，且两者的属性设置存在不同。在安卓中，设置 LinearLayout 的垂直方向布局使用android:orientation="vertical"，而在鸿蒙的 DirectionalLayout 里，则需使用ohos:orientation="vertical"。在实际迁移时，我们需要仔细调整布局文件中的各项参数，确保 UI 在鸿蒙设备上能正确呈现。​
+例如，在安卓应用中，有一个用于展示商品列表的 LinearLayout 布局，代码如下：​
+​
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"​
+    android:layout_width="match_parent"​
+    android:layout_height="match_parent"​
+    android:orientation="vertical"​
+    android:padding="16dp">​
+    <TextView​
+        android:id="@+id/product_name"​
+        android:layout_width="wrap_content"​
+        android:layout_height="wrap_content"​
+        android:textSize="20sp"​
+        android:textStyle="bold"/>​
+    <TextView​
+        android:id="@+id/product_price"​
+        android:layout_width="wrap_content"​
+        android:layout_height="wrap_content"​
+        android:textSize="16sp"​
+        android:layout_marginTop="8dp"/>​
+</LinearLayout>​
+​
+在迁移到鸿蒙平台后，对应的 DirectionalLayout 布局代码需修改为：​
+​
+<DirectionalLayout​
+    xmlns:ohos="http://schemas.huawei.com/res/ohos"​
+    ohos:height="match_parent"​
+    ohos:width="match_parent"​
+    ohos:orientation="vertical"​
+    ohos:padding="16vp">​
+    <Text​
+        ohos:id="$+id:product_name"​
+        ohos:height="match_content"​
+        ohos:width="match_content"​
+        ohos:text_size="20fp"​
+        ohos:text_weight="bold"/>​
+    <Text​
+        ohos:id="$+id:product_price"​
+        ohos:height="match_content"​
+        ohos:width="match_content"​
+        ohos:text_size="16fp"​
+        ohos:margin_top="8vp"/>​
+</DirectionalLayout>​
+​
+为提高布局适配效率，我们编写了一套适配工具类。该工具类通过反射机制，根据不同平台的布局容器和属性特点，动态调整布局参数。例如，在工具类中定义一个方法，用于将安卓的layout_width和layout_height属性值转换为鸿蒙对应的ohos:width和ohos:height属性值，并根据鸿蒙的尺寸单位（如 vp、fp）进行换算。​
+在 API 调用方面，鸿蒙拥有自己独立的 API 体系，这与安卓存在诸多不同。比如获取设备信息，在安卓中通过Build类获取，代码如下：​
+​
+String deviceModel = Build.MODEL;​
+String deviceManufacturer = Build.MANUFACTURER;​
+​
+而在鸿蒙中，则需通过DeviceInfo类实现，代码为：​
+​
+String deviceModel = DeviceInfo.getDeviceModel();​
+String deviceManufacturer = DeviceInfo.getManufacturer();​
+​
+为解决这一问题，我们创建了一个抽象的设备信息获取接口DeviceInfoProvider，在安卓和鸿蒙平台分别实现该接口。在应用代码中，通过调用该接口来获取设备信息，从而实现跨平台的统一调用。例如：​
+​
+public interface DeviceInfoProvider {​
+    String getDeviceModel();​
+    String getDeviceManufacturer();​
+}​
+// 安卓平台实现类​
+public class AndroidDeviceInfoProvider implements DeviceInfoProvider {​
+    @Override​
+    public String getDeviceModel() {​
+        return Build.MODEL;​
+    }​
+    @Override​
+    public String getDeviceManufacturer() {​
+        return Build.MANUFACTURER;​
+    }​
+}​
+// 鸿蒙平台实现类​
+public class HarmonyOSDeviceInfoProvider implements DeviceInfoProvider {​
+    @Override​
+    public String getDeviceModel() {​
+        return DeviceInfo.getDeviceModel();​
+    }​
+    @Override​
+    public String getDeviceManufacturer() {​
+        return DeviceInfo.getManufacturer();​
+    }​
+}​
+​
+在应用启动时，根据当前运行平台实例化对应的实现类，从而保证在不同平台上都能正确获取设备信息。​
+同时，在应用的资源文件管理上，我们也进行了优化。将不同平台特有的资源文件，如图片、字符串等，分别放置在对应的平台目录下。在代码中，通过判断当前运行平台，加载相应的资源文件。例如，在安卓平台的res目录下存放安卓特有的图片资源，在鸿蒙平台的resources目录下存放适配鸿蒙的图片资源。在加载图片时，使用如下代码：​
+​
+if (PlatformUtils.isAndroid()) {​
+    // 安卓平台加载图片​
+    Drawable drawable = ContextCompat.getDrawable(context, R.drawable.android_specific_image);​
+} else if (PlatformUtils.isHarmonyOS()) {​
+    // 鸿蒙平台加载图片​
+    ResourceManager resourceManager = ResourceManagerFactory.getInstance().getResourceManager(context.getBundleName());​
+    try {​
+        PixelMap pixelMap = resourceManager.getPixelMap("harmonyos_specific_image");​
+        Image image = new Image(context);​
+        image.setPixelMap(pixelMap);​
+    } catch (Exception e) {​
+        e.printStackTrace();​
+    }​
+}​
+​
+其中，PlatformUtils类用于判断当前运行的平台。​
+通过这个项目，我积累了丰富的跨平台开发经验，深刻认识到在鸿蒙跨平台开发中，充分理解不同平台的差异，从布局、API 调用到资源管理进行全面适配，是确保应用在鸿蒙平台成功运行的关键。同时，合理运用工具类和设计模式，能够有效提高开发效率，降低开发成本。​

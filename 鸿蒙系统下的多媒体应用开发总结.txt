@@ -1,0 +1,196 @@
+在开发一款音乐播放鸿蒙应用时，深入探索了鸿蒙系统下的多媒体应用开发。​
+利用鸿蒙的 MediaPlayer 类实现音乐文件的播放、暂停、快进、快退等基本功能。示例代码如下：​
+​
+import ohos.multimedia.media.AudioAttributes;​
+import ohos.multimedia.media.MediaPlayer;​
+import ohos.multimedia.media.PlayerException;​
+​
+MediaPlayer mediaPlayer = new MediaPlayer();​
+AudioAttributes audioAttributes = new AudioAttributes.Builder()​
+       .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)​
+       .setUsage(AudioAttributes.USAGE_MEDIA)​
+       .build();​
+mediaPlayer.setAudioAttributes(audioAttributes);​
+​
+try {​
+    mediaPlayer.setSource("file:///data/music/song.mp3");​
+    mediaPlayer.prepare();​
+    mediaPlayer.start();​
+} catch (PlayerException e) {​
+    e.printStackTrace();​
+}​
+​
+// 暂停播放​
+mediaPlayer.pause();​
+​
+// 快进10秒​
+mediaPlayer.seekTo(mediaPlayer.getCurrentPosition() + 10000);​
+​
+歌词同步显示方面，解析 LRC 歌词文件，根据音乐播放时间进度实时更新歌词显示。使用Timer类定时检查音乐播放进度并更新歌词，示例代码如下：​
+​
+import ohos.multimedia.media.MediaPlayer;​
+import ohos.utils.Timer;​
+import ohos.utils.TimerTask;​
+import java.util.List;​
+import java.util.Map;​
+​
+// 假设已解析LRC歌词文件得到歌词列表和时间戳映射​
+List<String> lyricsList = getLyricsList();​
+Map<Integer, Integer> timestampMap = getTimestampMap();​
+​
+MediaPlayer mediaPlayer = new MediaPlayer();​
+// 设置音乐源等操作​
+​
+Timer timer = new Timer();​
+timer.schedule(new TimerTask() {​
+    @Override​
+    public void run() {​
+        int currentPosition = mediaPlayer.getCurrentPosition();​
+        for (int timestamp : timestampMap.keySet()) {​
+            if (currentPosition >= timestamp && currentPosition < timestampMap.get(timestamp)) {​
+                int index = timestampMap.keySet().indexOf(timestamp);​
+                String currentLyric = lyricsList.get(index);​
+                // 在UI中更新歌词显示​
+                break;​
+            }​
+        }​
+    }​
+}, 0, 1000);​
+​
+音乐列表管理中，遇到大数据量音乐列表加载缓慢的问题。采用分页加载技术，每次只加载当前屏幕可见的音乐数据，当用户滑动列表时，再异步加载更多数据。使用RecyclerView结合分页加载，示例代码如下：​
+​
+import ohos.agp.components.BaseItemProvider;​
+import ohos.agp.components.Component;​
+import ohos.agp.components.ComponentContainer;​
+import ohos.agp.components.Text;​
+import ohos.agp.components.listener.ItemClickedListener;​
+import ohos.agp.components.listener.ScrollStateChangedListener;​
+import ohos.agp.components.recyclerview.RecyclerView;​
+import java.util.ArrayList;​
+import java.util.List;​
+​
+// 假设音乐数据类​
+class Music {​
+    String title;​
+    String artist;​
+​
+    public Music(String title, String artist) {​
+        this.title = title;​
+        this.artist = artist;​
+    }​
+}​
+​
+// 音乐数据列表​
+List<Music> allMusicList = getAllMusicList();// 假设获取全部音乐数据​
+List<Music> currentMusicList = new ArrayList<>();​
+int pageSize = 20;​
+int currentPage = 1;​
+​
+// RecyclerView适配器​
+class MusicAdapter extends BaseItemProvider {​
+    private List<Music> musicList;​
+​
+    public MusicAdapter(List<Music> musicList) {​
+        this.musicList = musicList;​
+    }​
+​
+    @Override​
+    public int getCount() {​
+        return musicList.size();​
+    }​
+​
+    @Override​
+    public Object getItem(int position) {​
+        return musicList.get(position);​
+    }​
+​
+    @Override​
+    public long getItemId(int position) {​
+        return position;​
+    }​
+​
+    @Override​
+    public Component getComponent(int position, Component convertComponent, ComponentContainer parent) {​
+        if (convertComponent == null) {​
+            convertComponent = LayoutScatter.getInstance(parent.getContext()).parse(ResourceTable.Layout_music_item, null, false);​
+        }​
+        Text titleText = (Text) convertComponent.findComponentById(ResourceTable.Id_music_title);​
+        Text artistText = (Text) convertComponent.findComponentById(ResourceTable.Id_music_artist);​
+        Music music = musicList.get(position);​
+        titleText.setText(music.title);​
+        artistText.setText(music.artist);​
+        return convertComponent;​
+    }​
+}​
+​
+RecyclerView recyclerView = (RecyclerView) findComponentById(ResourceTable.Id_music_recycler_view);​
+MusicAdapter adapter = new MusicAdapter(currentMusicList);​
+recyclerView.setAdapter(adapter);​
+​
+// 加载初始页面数据​
+loadPageData(currentPage);​
+​
+// 监听RecyclerView滑动事件，加载更多数据​
+recyclerView.addScrollStateChangedListener(new ScrollStateChangedListener() {​
+    @Override​
+    public void onScrollStateChanged(RecyclerView recyclerView, int newState) {​
+        if (newState == RecyclerView.SCROLL_STATE_IDLE) {​
+            int lastVisiblePosition = recyclerView.getLastVisiblePosition();​
+            if (lastVisiblePosition == currentMusicList.size() - 1) {​
+                currentPage++;​
+                loadPageData(currentPage);​
+            }​
+        }​
+    }​
+});​
+​
+// 加载页面数据方法​
+private void loadPageData(int page) {​
+    int startIndex = (page - 1) * pageSize;​
+    int endIndex = Math.min(startIndex + pageSize, allMusicList.size());​
+    currentMusicList.clear();​
+    currentMusicList.addAll(allMusicList.subList(startIndex, endIndex));​
+    adapter.notifyDataChanged();​
+}​
+​
+同时，为音乐文件添加缓存机制，减少重复读取文件时间开销。通过CacheManager类实现简单的缓存，示例代码如下：​
+​
+import ohos.data.cache.CacheManager;​
+import ohos.data.cache.Cacheable;​
+import java.io.IOException;​
+import java.io.InputStream;​
+​
+class MusicCacheable implements Cacheable {​
+    String musicFilePath;​
+​
+    public MusicCacheable(String musicFilePath) {​
+        this.musicFilePath = musicFilePath;​
+    }​
+​
+    @Override​
+    public InputStream getCachedData() {​
+        try {​
+            return new FileInputStream(musicFilePath);​
+        } catch (IOException e) {​
+            e.printStackTrace();​
+            return null;​
+        }​
+    }​
+}​
+​
+// 缓存音乐文件​
+CacheManager cacheManager = CacheManager.getInstance();​
+String musicFilePath = "file:///data/music/song.mp3";​
+MusicCacheable musicCacheable = new MusicCacheable(musicFilePath);​
+cacheManager.put("song.mp3", musicCacheable);​
+​
+// 从缓存读取音乐文件​
+Cacheable cachedMusic = cacheManager.get("song.mp3");​
+if (cachedMusic != null) {​
+    InputStream inputStream = cachedMusic.getCachedData();​
+    // 使用缓存数据播放音乐​
+} else {​
+    // 从原始路径读取音乐文件​
+}​
+​
+通过这个项目，积累了在鸿蒙系统下开发多媒体应用的丰富经验，了解到多媒体应用开发中在播放控制、数据加载和 UI 优化等方面的关键技术和解决思路。
